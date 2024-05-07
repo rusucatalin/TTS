@@ -1,23 +1,41 @@
 import React, { useState } from "react";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { TextField, Button, Container, Typography } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import { getDatabase, ref, get, child } from "firebase/database";
 
 const LoginPage = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    const navigate = useNavigate();
 
     const handleSignIn = () => {
         const auth = getAuth();
+        const db = getDatabase();
+        const usersRef = ref(db, 'users');
+
         signInWithEmailAndPassword(auth, email, password)
             .then((userCredential) => {
-                // Signed in
                 const user = userCredential.user;
                 console.log("Sign in successful");
+
+                localStorage.setItem('email', email);
+
+                navigate("/");
             })
             .catch((error) => {
                 setError(error.message);
             });
+
+        get(child(usersRef, email.replace(/\./g, '-'))).then((snapshot) => {
+            if (snapshot.exists()) {
+            } else {
+                setError("Invalid email or password");
+            }
+        }).catch((error) => {
+            console.error("Error getting user data:", error);
+        });
     };
 
     return (

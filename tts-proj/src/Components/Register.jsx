@@ -1,17 +1,27 @@
 import React, { useState } from "react";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+import { getDatabase, ref, push, set } from "firebase/database";
 import { TextField, Button, Container, Typography } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
 const RegisterPage = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    const navigate = useNavigate();
 
     const handleRegister = () => {
         const auth = getAuth();
         createUserWithEmailAndPassword(auth, email, password)
             .then((userCredential) => {
                 console.log("Registration successful");
+                const db = getDatabase();
+                const usersRef = ref(db, 'users');
+                const newUserRef = push(usersRef);
+                set(newUserRef, {
+                    email: email,
+                });
+                navigate('/login');
             })
             .catch((error) => {
                 setError(error.message);
