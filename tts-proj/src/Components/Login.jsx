@@ -28,14 +28,16 @@ const LoginPage = () => {
                 setError(error.message);
             });
 
-        get(child(usersRef, email.replace(/\./g, '-'))).then((snapshot) => {
-            if (snapshot.exists()) {
-            } else {
-                setError("Invalid email or password");
-            }
-        }).catch((error) => {
-            console.error("Error getting user data:", error);
-        });
+        get(child(usersRef, email.replace(/\./g, '-')))
+            .then((snapshot) => {
+                if (snapshot.exists()) {
+                } else {
+                    setError("Invalid email or password");
+                }
+            })
+            .catch((error) => {
+                console.error("Error getting user data:", error);
+            });
     };
 
     return (
@@ -69,8 +71,7 @@ const LoginPage = () => {
                 variant="contained"
                 color="primary"
                 fullWidth
-                onClick={handleSignIn}
-            >
+                onClick={handleSignIn}>
                 Sign In
             </Button>
         </Container>

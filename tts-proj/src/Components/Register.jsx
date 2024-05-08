@@ -16,8 +16,8 @@ const RegisterPage = () => {
             .then((userCredential) => {
                 console.log("Registration successful");
                 const db = getDatabase();
-                const usersRef = ref(db, 'users');
-                const newUserRef = push(usersRef);
+                const usersRef= ref(db, 'users');
+                const newUserRef= push(usersRef);
                 set(newUserRef, {
                     email: email,
                 });

@@ -6,9 +6,11 @@ import Typography from '@mui/material/Typography';
 import Speech from 'speak-tts';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import IconButton from '@mui/material/IconButton';
-import DeleteIcon from '@mui/icons-material/Delete'; // Importăm iconița pentru ștergere
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useNavigate } from 'react-router-dom';
-import { getDatabase, ref, onValue, push, remove } from "firebase/database";
+import { getOpenAIResponse } from '../Service/openaiService.js';
+import { deletePrompt } from '../Service/promptService.js';
+import { getDatabase, onValue, push, ref } from "firebase/database";
 
 const PromptList = ({ userEmail }) => {
     const [prompts, setPrompts] = useState([]);
@@ -30,9 +32,7 @@ const PromptList = ({ userEmail }) => {
     }, [userEmail]);
 
     const handleDeletePrompt = (id) => {
-        const db = getDatabase();
-        const promptRef = ref(db, `prompts/${id}`);
-        remove(promptRef);
+        deletePrompt(id);
     };
 
     return (
@@ -41,7 +41,7 @@ const PromptList = ({ userEmail }) => {
             {prompts.map((prompt, index) => (
                 <div key={prompt.id} style={{ display: 'flex', alignItems: 'center' }}>
                     <Typography variant="body1" gutterBottom style={{ flex: 1 }}>
-                        {prompt.prompt}
+                        {<><strong>Question:</strong> {prompt.question}</>}
                     </Typography>
                     <IconButton onClick={() => handleDeletePrompt(prompt.id)} aria-label="delete">
                         <DeleteIcon />
@@ -55,6 +55,7 @@ const PromptList = ({ userEmail }) => {
 const MainPage = ({ openaiApiKey }) => {
     const [prompt, setPrompt] = useState('');
     const [promptList, setPromptList] = useState([]);
+    const [response, setResponse] = useState('');
     const navigate = useNavigate();
 
     const speech = new Speech();
@@ -69,7 +70,7 @@ const MainPage = ({ openaiApiKey }) => {
             const data = snapshot.val();
             if (data) {
                 const userPrompts = Object.values(data).filter(prompt => prompt.userEmail === userEmail);
-                setPromptList(userPrompts.map(prompt => prompt.prompt));
+                setPromptList(userPrompts.map(prompt => ({ question: prompt.question })));
             } else {
                 setPromptList([]);
             }
@@ -77,34 +78,44 @@ const MainPage = ({ openaiApiKey }) => {
 
     }, [userEmail]);
 
-    const handleTextToSpeech = () => {
+    const handleTextToSpeech = async () => {
         if (prompt.trim() === '') {
             return;
         }
 
-        const newPromptList = [prompt, ...promptList];
-        setPromptList(newPromptList);
+        try {
+            const response = await getOpenAIResponse(prompt);
+            console.log('Response:', response);
 
-        const db = getDatabase();
-        const promptsRef = ref(db, 'prompts');
-        push(promptsRef, {
-            prompt: prompt,
-            userEmail: userEmail
-        });
+            setResponse(response);
 
-        speech
-            .init()
-            .then((data) => {
-                speech.speak({
-                    text: prompt,
-                    queue: false,
-                });
-            })
-            .catch((error) => {
-                console.error("Couldn't initialize speech synthesis: ", error);
+            const newPromptList = [{ question: prompt, response }, ...promptList];
+            setPromptList(newPromptList);
+
+            const db = getDatabase();
+            const promptsRef = ref(db, 'prompts');
+            push(promptsRef, {
+                question: prompt,
+                response,
+                userEmail: userEmail
             });
 
-        setPrompt('');
+            speech
+                .init()
+                .then(() => {
+                    speech.speak({
+                        text: response,
+                        queue: false,
+                    });
+                })
+                .catch((error) => {
+                    console.error("Couldn't initialize speech synthesis: ", error);
+                });
+
+            setPrompt('');
+        } catch (error) {
+            console.error('Error fetching response:', error);
+        }
     };
 
     const handleLogout = () => {
@@ -123,13 +134,19 @@ const MainPage = ({ openaiApiKey }) => {
                     <ExitToAppIcon />
                 </IconButton>
                 <Grid item xs={12} sm={8} md={6} lg={4} sx={{ marginBottom: '20px' }}>
-                    {promptList.map((prompt, index) => (
+                    <Typography variant="h6" gutterBottom>Ask a Question</Typography>
+                    {response && (
+                        <Typography variant="body1" gutterBottom>
+                            <strong>Response:</strong> {response}
+                        </Typography>
+                    )}
+                    {promptList.map((item, index) => (
                         <Typography variant="body1" gutterBottom key={index}>
-                            {prompt}
+                            {item.question}
                         </Typography>
                     ))}
                     <TextField
-                        label="Prompt"
+                        label="Question"
                         multiline
                         rows={4}
                         variant="outlined"

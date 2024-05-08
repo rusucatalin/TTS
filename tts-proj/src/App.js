@@ -1,8 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
-import {RegisterPage} from "./Components/Register";
-import {LoginPage} from "./Components/Login";
-import {MainPage} from "./Components/Main";
-
+import {RegisterPage} from "./Components/Register.jsx";
+import {LoginPage} from "./Components/Login.jsx";
+import {MainPage} from "./Components/Main.jsx";
 
 function App() {
   return (

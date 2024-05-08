@@ -5,6 +5,7 @@
 /.pnp
 .pnp.js
 .env
+src/Components/ai.js
 
 # testing
 /coverage
