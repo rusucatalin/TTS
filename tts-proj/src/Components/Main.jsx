@@ -10,9 +10,9 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { useNavigate } from 'react-router-dom';
 import { getOpenAIResponse } from '../Service/openaiService.js';
 import { deletePrompt } from '../Service/promptService.js';
-import { getDatabase, onValue, push, ref } from "firebase/database";
+import { getDatabase, onValue, push, ref, remove } from "firebase/database";
 
-const PromptList = ({ userEmail }) => {
+const PromptList = ({ userEmail, updatePromptList }) => {
     const [prompts, setPrompts] = useState([]);
 
     useEffect(() => {
@@ -29,10 +29,12 @@ const PromptList = ({ userEmail }) => {
             }
         });
 
-    }, [userEmail]);
+    }, [userEmail, updatePromptList]);
 
     const handleDeletePrompt = (id) => {
-        deletePrompt(id);
+        const db = getDatabase();
+        const promptRef = ref(db, `prompts/${id}`);
+        remove(promptRef);
     };
 
     return (
@@ -54,29 +56,13 @@ const PromptList = ({ userEmail }) => {
 
 const MainPage = ({ openaiApiKey }) => {
     const [prompt, setPrompt] = useState('');
-    const [promptList, setPromptList] = useState([]);
     const [response, setResponse] = useState('');
+    const [updatePromptList, setUpdatePromptList] = useState(false);
     const navigate = useNavigate();
 
     const speech = new Speech();
 
     const userEmail = localStorage.getItem('email');
-
-    useEffect(() => {
-        const db = getDatabase();
-        const promptsRef = ref(db, 'prompts');
-
-        onValue(promptsRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                const userPrompts = Object.values(data).filter(prompt => prompt.userEmail === userEmail);
-                setPromptList(userPrompts.map(prompt => ({ question: prompt.question })));
-            } else {
-                setPromptList([]);
-            }
-        });
-
-    }, [userEmail]);
 
     const handleTextToSpeech = async () => {
         if (prompt.trim() === '') {
@@ -88,9 +74,6 @@ const MainPage = ({ openaiApiKey }) => {
             console.log('Response:', response);
 
             setResponse(response);
-
-            const newPromptList = [{ question: prompt, response }, ...promptList];
-            setPromptList(newPromptList);
 
             const db = getDatabase();
             const promptsRef = ref(db, 'prompts');
@@ -113,6 +96,7 @@ const MainPage = ({ openaiApiKey }) => {
                 });
 
             setPrompt('');
+            setUpdatePromptList(prevState => !prevState);
         } catch (error) {
             console.error('Error fetching response:', error);
         }
@@ -125,7 +109,7 @@ const MainPage = ({ openaiApiKey }) => {
 
     return (
         <div>
-            <PromptList userEmail={userEmail} />
+            <PromptList userEmail={userEmail} updatePromptList={updatePromptList} />
             <Grid container justifyContent="center" alignItems="flex-end" style={{ minHeight: '100vh', marginLeft: '200px', overflowX: 'hidden' }}>
                 <IconButton
                     onClick={handleLogout}
@@ -140,11 +124,6 @@ const MainPage = ({ openaiApiKey }) => {
                             <strong>Response:</strong> {response}
                         </Typography>
                     )}
-                    {promptList.map((item, index) => (
-                        <Typography variant="body1" gutterBottom key={index}>
-                            {item.question}
-                        </Typography>
-                    ))}
                     <TextField
                         label="Question"
                         multiline
